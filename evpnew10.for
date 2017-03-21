@@ -81,6 +81,14 @@ cg
 cth
       dimension ETH(3,3,1118),ITHERMO
 
+      double precision B(3,3,6)
+      PARAMETER (RSQ2=0.70710678118654744)
+      PARAMETER (RSQ3=0.57735026918962584)
+      PARAMETER (RSQ6=0.40824829046386304)
+
+
+!$ACC declare create(NSYST,gamd0,sch,nrs,gamdot,trialtau,xkin)
+
       END MODULE fft_dim_MODULE
       
       MODULE VOIGT_MODULE
@@ -228,11 +236,10 @@ C **************************************************************************
       MODULE CHG_basic_MODULE
       contains
       SUBROUTINE CHG_BASIS(CE2,C2,CE4,C4,IOPT,KDIM)
-
+      USE fft_dim_MODULE
+!$ACC routine seq
 c      PARAMETER (SQR2=1.41421356237309   )
-      PARAMETER (RSQ2=0.70710678118654744)
-      PARAMETER (RSQ3=0.57735026918962584)
-      PARAMETER (RSQ6=0.40824829046386304)
+     
 
       DIMENSION CE2(KDIM),C2(3,3),CE4(KDIM,KDIM),C4(3,3,3,3)
       DIMENSION temp1,temp2
@@ -244,8 +251,8 @@ C    #        0,   0,   RSQ2,0,   0,   0,   RSQ2,0,   0,
 C    #        0,   RSQ2,0,   RSQ2,0,   0,   0,   0,   0,
 C    #        RSQ3,0,   0,   0,   RSQ3,0,   0,   0,   RSQ3/
 
-      COMMON/BASIS/ B(3,3,6)
-
+    
+     
       IF(IOPT.EQ.0) THEN
 C *** CALCULATES BASIS TENSORS B(N)
 
@@ -1603,7 +1610,7 @@ C
       MODULE Edost_sg_Eval_MODULE
       contains
       subroutine edotp_sg_eval(sg6,edotp6,dedotp66,i,j,k,jph)
-  
+!$ACC routine seq  
       USE fft_dim_MODULE
 c
       dimension sg6(6)
