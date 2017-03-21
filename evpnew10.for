@@ -88,7 +88,8 @@ cth
 
 
 !$ACC declare create(NSYST,gamd0,sch,nrs,gamdot,trialtau,xkin)
-
+!$ACC declare create(B)
+!$ACC declare create(tdot,hard,tau,thet,crss)
       END MODULE fft_dim_MODULE
       
       MODULE VOIGT_MODULE
@@ -1706,10 +1707,10 @@ c     #   dedotp66(II,JJ)+SC(II,K1)*SC(JJ,K1)*RSS1(K1)
       END subroutine edotp_sg_eval
       END MODULE Edost_sg_Eval_MODULE
       
-            MODULE Get_trialtau_MODULE 
+      MODULE Get_trialtau_MODULE 
       contains
       subroutine get_trialtau(i,j,k,jph)
-
+!$ACC routine seq
       USE fft_dim_MODULE
 
       GAMTOTX=GACUMGR(I,J,K)
