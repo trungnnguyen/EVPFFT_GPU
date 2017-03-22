@@ -81,15 +81,22 @@ cg
 cth
       dimension ETH(3,3,1118),ITHERMO
 
-      double precision B(3,3,6)
       PARAMETER (RSQ2=0.70710678118654744)
       PARAMETER (RSQ3=0.57735026918962584)
       PARAMETER (RSQ6=0.40824829046386304)
+c      Double precision B(3,3,6)
+      
+
+c      COMMON/BASIS/ B(3,3,6)
 
 
+
+#ifdef GPU
 !$ACC declare create(NSYST,gamd0,sch,nrs,gamdot,trialtau,xkin)
-!$ACC declare create(B)
+! $ACC declare create(B)
 !$ACC declare create(tdot,hard,tau,thet,crss)
+!$ACC declare create(gacumgr)
+#endif
       END MODULE fft_dim_MODULE
       
       MODULE VOIGT_MODULE
@@ -237,14 +244,20 @@ C **************************************************************************
       MODULE CHG_basic_MODULE
       contains
       SUBROUTINE CHG_BASIS(CE2,C2,CE4,C4,IOPT,KDIM)
-      USE fft_dim_MODULE
+      
+
+#ifdef UGPU
 !$ACC routine seq
+#endif
+      USE fft_dim_MODULE
+
+
 c      PARAMETER (SQR2=1.41421356237309   )
-     
+      
 
       DIMENSION CE2(KDIM),C2(3,3),CE4(KDIM,KDIM),C4(3,3,3,3)
       DIMENSION temp1,temp2
-C     DIMENSION B(3,3,6)
+c      double precision B(3,3,6)
 C     DATA B /RSQ6,0,   0,   0,   RSQ6,0,   0,   0,  -2*RSQ6,
 C    #        RSQ2,0,   0,   0,  -RSQ2,0,   0,   0,   0,
 C    #        0,   0,   0,   0,   0,   RSQ2,0,   RSQ2,0,
@@ -252,8 +265,7 @@ C    #        0,   0,   RSQ2,0,   0,   0,   RSQ2,0,   0,
 C    #        0,   RSQ2,0,   RSQ2,0,   0,   0,   0,   0,
 C    #        RSQ3,0,   0,   0,   RSQ3,0,   0,   0,   RSQ3/
 
-    
-     
+      COMMON/BASIS/ B(3,3,6)
       IF(IOPT.EQ.0) THEN
 C *** CALCULATES BASIS TENSORS B(N)
 
@@ -286,7 +298,7 @@ C *** CALCULATES BASIS TENSORS B(N)
         B(3,3,6)=RSQ3
 
       ENDIF
-
+  
 C *** CALCULATES CARTESIAN SECOND ORDER TENSOR FROM b-COMPONENTS VECTOR.
       IF(IOPT.EQ.1) THEN
       C2=0.0
@@ -640,7 +652,7 @@ C
    
       
 C
-            MODULE DATA_CRYSTAL_ELAST_MODULE
+      MODULE DATA_CRYSTAL_ELAST_MODULE
       contains
       SUBROUTINE DATA_CRYSTAL_ELAST(IPH)
       USE VOIGT_MODULE
@@ -721,6 +733,9 @@ c
       MODULE ludcmp_MODULE
       contains
       SUBROUTINE ludcmp(a,n,np,indx,d,isingular)
+#ifdef UGPU
+!$ACC routine seq
+#endif
       INTEGER n,np,indx(n),NMAX
 c      REAL d,a(np,np),TINY
 c      PARAMETER (NMAX=500,TINY=1.0e-20)
@@ -799,9 +814,12 @@ c
       END  MODULE ludcmp_MODULE
        
      
-            MODULE Lubksb_MODULE
+      MODULE Lubksb_MODULE
       contains
       SUBROUTINE lubksb(a,n,np,indx,b)
+#ifdef GPU
+!$ACC routine seq
+#endif
       INTEGER n,np,indx(n)
       REAL a(np,np),b(n)
       INTEGER i,ii,j,ll
@@ -836,6 +854,9 @@ C *************************************************************************
       MODULE LU_inverse_MODULE
       contains
       SUBROUTINE LU_INVERSE(A,N)
+#ifdef GPU
+!$ACC routine seq
+#endif
       USE ludcmp_MODULE
       USE Lubksb_MODULE
        
@@ -1006,6 +1027,9 @@ C
 
       DIMENSION IJV(6,2)
       DATA ((IJV(N,M),M=1,2),N=1,6)/1,1,2,2,3,3,2,3,1,3,1,2/
+
+
+
 
 C *********   INITIALIZATION BLOCK   ***************************
 C
@@ -1482,9 +1506,7 @@ c
       MODULE Minval_MODULE
       contains
       SUBROUTINE MINV (A,N,D,L,M)
-#ifdef GPU
-!$ACC routine seq  
-#endif      
+      
 c
       DIMENSION A(*),L(*),M(*)
 C
@@ -1611,7 +1633,9 @@ C
       MODULE Edost_sg_Eval_MODULE
       contains
       subroutine edotp_sg_eval(sg6,edotp6,dedotp66,i,j,k,jph)
-!$ACC routine seq  
+#ifdef GPU
+!$ACC routine seq 
+#endif  
       USE fft_dim_MODULE
 c
       dimension sg6(6)
@@ -1676,16 +1700,12 @@ c
 c
        tmp11=0.
        dedotp66=0.        
-#ifdef GPU_edotsg
-!$ACC kernels
-!$ACC LOOP collapse(2)
-#endif
+
       DO II=1,5
       DO JJ=1,5
 c       dedotp66(II,JJ)=0.
-#ifdef GPU_edotsg
-!$ACC LOOP reduction(+:tmp11)
-#endif
+
+
      
        DO K1=1,12 !NSYST(jph)
 c         dedotp66(II,JJ)=
@@ -1695,9 +1715,7 @@ c     #   dedotp66(II,JJ)+SC(II,K1)*SC(JJ,K1)*RSS1(K1)
        dedotp66(II,JJ)=tmp11
       ENDDO
       ENDDO
-#ifdef GPU_edotsg
-!$ACC end kernels
-#endif
+
       do ii=1,6
        dedotp66(II,6)=0.
        dedotp66(6,II)=0.
@@ -1710,7 +1728,9 @@ c     #   dedotp66(II,JJ)+SC(II,K1)*SC(JJ,K1)*RSS1(K1)
       MODULE Get_trialtau_MODULE 
       contains
       subroutine get_trialtau(i,j,k,jph)
-!$ACC routine seq
+#ifdef GPU
+!$ACC routine 
+#endif
       USE fft_dim_MODULE
 
       GAMTOTX=GACUMGR(I,J,K)
@@ -1806,24 +1826,29 @@ cth
 #endif
 
 #ifdef GPU
- 
+#if 0 
 !$ACC parallel
-!$ACC loop  private(res,edotp6,eptaux,sg6,sg66,sg6old)  
+#else
+!$ACC kernels
+#endif
+!$ACC loop collapse(3) private(res,edotp6,eptaux,sg6,sg66,sg6old)  
 !$ACC& private(sgaux,strainaux,strainceq6,xjacobinv,xlambda)
-!$ACC& private(jph,sgnorm,dgnorm,erral)
 !$ACC& private(disgradaux)
+!$ACC& private(jph,sgnorm,dgnorm,erral)
 !$ACC& reduction(+:iter1,dsgnorm1,dsgnorm2,ddgnorm,ERRS,ERRE,xiterav)
+!$ACC& reduction(+:iter1,dsgnorm1,dsgnorm2,ddgnorm,ERRS,ERRE,xiterav)
+!$ACC& private(i,j,k,ii,jj,kk)
 #endif
  
       do 877 i=1,npts1
 cth
 caps      write(*,'(1H+,i5,a)') int(100.*i/npts1),'% COMPLETED'
 cth
-#ifdef GPU
+#ifdef UGPU
 !$ACC loop seq
 #endif
       do 877 j=1,npts2
-#ifdef GPU
+#ifdef UGPU
 !$ACC loop seq
 #endif
       do 877 k=1,npts3
@@ -2031,7 +2056,7 @@ c
       dsgnorm2=0.
       ddgnorm=0.
 #ifdef GPU
-!$ACC loop seq
+!$ACC loop seq 
 #endif
       do ii=1,6
        dsgnorm1=dsgnorm1+(sg6(ii)-sg6old(ii))**2
@@ -2111,9 +2136,14 @@ cg
       endif    !   igas endif
 cg 
 877   continue
-#ifdef GPU
+ 
+#if 0 
 !$ACC end parallel
+#else
+!$ACC end kernels
 #endif
+
+
 #ifdef GPU
 !$ACC end  data
 #endif
