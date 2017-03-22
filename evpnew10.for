@@ -1834,9 +1834,10 @@ cth
 !$ACC loop collapse(3) private(res,edotp6,eptaux,sg6,sg66,sg6old)  
 !$ACC& private(sgaux,strainaux,strainceq6,xjacobinv,xlambda)
 !$ACC& private(disgradaux)
-!$ACC& private(jph,sgnorm,dgnorm,erral)
+!$ACC& private(jph,sgnorm,dgnorm,erral,errald)
+!$ACC& private(dsgnorm1,dsgnorm2)
 !$ACC& reduction(+:iter1,dsgnorm1,dsgnorm2,ddgnorm,ERRS,ERRE,xiterav)
-!$ACC& reduction(+:iter1,dsgnorm1,dsgnorm2,ddgnorm,ERRS,ERRE,xiterav)
+!$ACC& reduction(+:sgnorm,dgnorm)
 !$ACC& private(i,j,k,ii,jj,kk)
 #endif
  
