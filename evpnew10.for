@@ -84,14 +84,14 @@ cth
       PARAMETER (RSQ2=0.70710678118654744)
       PARAMETER (RSQ3=0.57735026918962584)
       PARAMETER (RSQ6=0.40824829046386304)
-c      Double precision B(3,3,6)
+      Double precision B(3,3,6)
       
 
 c      COMMON/BASIS/ B(3,3,6)
 
 
 
-#ifdef GPU
+#ifdef UGPU
 !$ACC declare create(NSYST,gamd0,sch,nrs,gamdot,trialtau,xkin)
 ! $ACC declare create(B)
 !$ACC declare create(tdot,hard,tau,thet,crss)
@@ -265,7 +265,7 @@ C    #        0,   0,   RSQ2,0,   0,   0,   RSQ2,0,   0,
 C    #        0,   RSQ2,0,   RSQ2,0,   0,   0,   0,   0,
 C    #        RSQ3,0,   0,   0,   RSQ3,0,   0,   0,   RSQ3/
 
-      COMMON/BASIS/ B(3,3,6)
+C      COMMON/BASIS/ B(3,3,6)
       IF(IOPT.EQ.0) THEN
 C *** CALCULATES BASIS TENSORS B(N)
 
@@ -817,7 +817,7 @@ c
       MODULE Lubksb_MODULE
       contains
       SUBROUTINE lubksb(a,n,np,indx,b)
-#ifdef GPU
+#ifdef UGPU
 !$ACC routine seq
 #endif
       INTEGER n,np,indx(n)
@@ -854,7 +854,7 @@ C *************************************************************************
       MODULE LU_inverse_MODULE
       contains
       SUBROUTINE LU_INVERSE(A,N)
-#ifdef GPU
+#ifdef UGPU
 !$ACC routine seq
 #endif
       USE ludcmp_MODULE
@@ -1633,7 +1633,7 @@ C
       MODULE Edost_sg_Eval_MODULE
       contains
       subroutine edotp_sg_eval(sg6,edotp6,dedotp66,i,j,k,jph)
-#ifdef GPU
+#ifdef UGPU
 !$ACC routine seq 
 #endif  
       USE fft_dim_MODULE
@@ -1728,8 +1728,8 @@ c     #   dedotp66(II,JJ)+SC(II,K1)*SC(JJ,K1)*RSS1(K1)
       MODULE Get_trialtau_MODULE 
       contains
       subroutine get_trialtau(i,j,k,jph)
-#ifdef GPU
-!$ACC routine 
+#ifdef UGPU
+!$ACC routine seq
 #endif
       USE fft_dim_MODULE
 
