@@ -79,19 +79,20 @@ cth
 cg
       dimension WPH1,SCAUAV1(3,3),SVM1
 cth
-      dimension ETH(3,3,1118),ITHERMO
+      PARAMETER(NGRAINS=5000)
+      dimension ETH(3,3,NGRAINS),ITHERMO
 
       PARAMETER (RSQ2=0.70710678118654744)
       PARAMETER (RSQ3=0.57735026918962584)
       PARAMETER (RSQ6=0.40824829046386304)
-c      Double precision B(3,3,6)
+      Double precision B(3,3,6)
       
 
 c      COMMON/BASIS/ B(3,3,6)
 
 
 
-#ifdef GPU
+#ifdef UGPU
 !$ACC declare create(NSYST,gamd0,sch,nrs,gamdot,trialtau,xkin)
 ! $ACC declare create(B)
 !$ACC declare create(tdot,hard,tau,thet,crss)
@@ -265,7 +266,7 @@ C    #        0,   0,   RSQ2,0,   0,   0,   RSQ2,0,   0,
 C    #        0,   RSQ2,0,   RSQ2,0,   0,   0,   0,   0,
 C    #        RSQ3,0,   0,   0,   RSQ3,0,   0,   0,   RSQ3/
 
-      COMMON/BASIS/ B(3,3,6)
+C      COMMON/BASIS/ B(3,3,6)
       IF(IOPT.EQ.0) THEN
 C *** CALCULATES BASIS TENSORS B(N)
 
@@ -817,7 +818,7 @@ c
       MODULE Lubksb_MODULE
       contains
       SUBROUTINE lubksb(a,n,np,indx,b)
-#ifdef GPU
+#ifdef UGPU
 !$ACC routine seq
 #endif
       INTEGER n,np,indx(n)
@@ -854,7 +855,7 @@ C *************************************************************************
       MODULE LU_inverse_MODULE
       contains
       SUBROUTINE LU_INVERSE(A,N)
-#ifdef GPU
+#ifdef UGPU
 !$ACC routine seq
 #endif
       USE ludcmp_MODULE
@@ -1418,6 +1419,28 @@ c
       MODULE fourn_MODULE
       Contains
       SUBROUTINE fourn(data,nn,ndim,isign)
+      implicit none
+      INTEGER isign,ndim,nn(ndim)
+      REAL data(*)
+
+#if 1
+      call fourn_c(data,nn,ndim,isign)
+#else
+      call fourn_f(data,nn,ndim,isign)
+#endif
+
+      end subroutine
+
+      SUBROUTINE fourn_c(data,nn,ndim,isign)
+      implicit none
+      INTEGER isign,ndim,nn(ndim)
+      REAL data(*)
+
+      call c_fourn(data,nn,ndim,isign)
+
+      end subroutine
+
+      SUBROUTINE fourn_f(data,nn,ndim,isign)
       INTEGER isign,ndim,nn(ndim)
       REAL data(*)
       INTEGER i1,i2,i2rev,i3,i3rev,ibit,idim,ifp1,ifp2,ip1,ip2,ip3,k1,
@@ -1500,7 +1523,7 @@ c
 !$omp end parallel do
 #endif
       return
-      END SUBROUTINE fourn
+      END SUBROUTINE fourn_f
       END MODULE fourn_MODULE
       
       MODULE Minval_MODULE
@@ -1633,7 +1656,7 @@ C
       MODULE Edost_sg_Eval_MODULE
       contains
       subroutine edotp_sg_eval(sg6,edotp6,dedotp66,i,j,k,jph)
-#ifdef GPU
+#ifdef UGPU
 !$ACC routine seq 
 #endif  
       USE fft_dim_MODULE
@@ -1728,8 +1751,8 @@ c     #   dedotp66(II,JJ)+SC(II,K1)*SC(JJ,K1)*RSS1(K1)
       MODULE Get_trialtau_MODULE 
       contains
       subroutine get_trialtau(i,j,k,jph)
-#ifdef GPU
-!$ACC routine 
+#ifdef UGPU
+!$ACC routine seq
 #endif
       USE fft_dim_MODULE
 
@@ -1834,9 +1857,10 @@ cth
 !$ACC loop collapse(3) private(res,edotp6,eptaux,sg6,sg66,sg6old)  
 !$ACC& private(sgaux,strainaux,strainceq6,xjacobinv,xlambda)
 !$ACC& private(disgradaux)
-!$ACC& private(jph,sgnorm,dgnorm,erral)
+!$ACC& private(jph,sgnorm,dgnorm,erral,errald)
+!$ACC& private(dsgnorm1,dsgnorm2)
 !$ACC& reduction(+:iter1,dsgnorm1,dsgnorm2,ddgnorm,ERRS,ERRE,xiterav)
-!$ACC& reduction(+:iter1,dsgnorm1,dsgnorm2,ddgnorm,ERRS,ERRE,xiterav)
+!$ACC& reduction(+:sgnorm,dgnorm)
 !$ACC& private(i,j,k,ii,jj,kk)
 #endif
  
@@ -2746,8 +2770,10 @@ cth
       do jj=1,3
       edotp(ii,jj,i,j,k)=0.
 cth      ept(ii,jj,i,j,k)=0.
+      if(jgr.gt.NGRAINS) stop
       if(jgr.gt.0) then
        ept(ii,jj,i,j,k)=eth(ii,jj,jgr)
+
       else
        ept(ii,jj,i,j,k)=0.
       endif
@@ -2827,6 +2853,7 @@ cg     #           t194,a,t206,a,t218,a,t230,a)') 'EVM','E11','E22',
      #'DP11','DP22','DP33','SVM','S11','S22','S33'
 cg
      #,'SVM_1','S11_1','S22_1','S33_1'
+
 
       do 3000 imicro=1,nsteps
 
